@@ -5,7 +5,7 @@ trait Lifecycle[A] {
   /** Fills the role of a token lifecycle actor. The actor must reply to `TokenRequest` messages,
     * and may also optionally handle `Destroy` messages.
     */
-  def props: akka.actor.Props
+  def actor: akka.actor.ActorRef
 
   def isAlive(a: A): Boolean = true
   final def isDead(a: A): Boolean = !isAlive(a)

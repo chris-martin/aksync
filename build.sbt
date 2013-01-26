@@ -46,3 +46,5 @@ pomExtra := {
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.1.0"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-testkit" % "2.1.0"
+
+libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1"
