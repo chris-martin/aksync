@@ -4,12 +4,12 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable}
 import collection.mutable.{Queue, HashMap, Stack}
 import concurrent.duration.{Duration, DurationInt, FiniteDuration}
 
-class Server[A](lifecycle: Lifecycle[A], poolSize: Range = 2 to 8,
+import Server._
+
+class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
     leaseTimeout: Duration = 30.seconds,
     tokenRetryInterval: RetryInterval = RetryInterval.ExponentialBackoff())
-    (implicit m: Manifest[A]) extends Actor with ActorLogging {
-
-  import Server._
+    (implicit manifestA: Manifest[A]) extends Actor with ActorLogging {
 
   private val clients = Queue[ActorRef]()
   private val tokens = Stack[A]()
@@ -53,8 +53,6 @@ class Server[A](lifecycle: Lifecycle[A], poolSize: Range = 2 to 8,
 
     case Internal.MaybeIssueLeases =>
 
-      log debug "Received: Internal.MaybeIssueLeases"
-
       createLease() match {
 
         case Some(lease) =>
@@ -71,8 +69,6 @@ class Server[A](lifecycle: Lifecycle[A], poolSize: Range = 2 to 8,
 
     case Internal.MaybeExpire(lease: Lease[A], id: Int) =>
 
-      log debug "Received: Internal.MaybeExpire"
-
       leases.get(lease) foreach { state =>
         if (state.isExpired(id)) {
           log warning "Expiring a lease (acks: %d) that was issued to %s".format(id, lease.client)
@@ -82,26 +78,30 @@ class Server[A](lifecycle: Lifecycle[A], poolSize: Range = 2 to 8,
 
     case Internal.MaybeRequestToken =>
 
-      log debug "Received: Internal.MaybeRequestToken"
-
       if (tokenCreationState == TokenCreationState.NotDoingAnything) {
 
-        val totalTokenCount = tokens.size + leases.size
-        val poolUndersized = totalTokenCount < poolSize.min
-        val poolAtCapacity = totalTokenCount >= poolSize.max
-        val needsAnotherToken = poolUndersized || (clients.nonEmpty && !poolAtCapacity)
+        val size = tokens.size + leases.size
+
+        val needsAnotherToken = (poolSizeRange requiresMoreThan size) ||
+          (clients.nonEmpty && (poolSizeRange allowsMoreThan size))
 
         if (needsAnotherToken) {
           tokenCreationState = TokenCreationState.AnticipatingNewToken()
-          lifecycle.actor ! Lifecycle.TokenRequest
+          self ! Internal.RequestToken
         }
       }
+
+    case Internal.RequestToken =>
+
+      log debug "Sending: Lifecycle.TokenRequest"
+
+      lifecycle.actor ! Lifecycle.TokenRequest
 
     case Lifecycle.NewToken(token) =>
 
       log debug "Received: Lifecycle.NewToken"
 
-      if (!m.runtimeClass.isAssignableFrom(token.getClass)) {
+      if (!manifestA.runtimeClass.isAssignableFrom(token.getClass)) {
         log warning "Received NewToken of incorrect type %s".format(token.getClass)
       } else {
         tokenCreationState match {
@@ -124,8 +124,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSize: Range = 2 to 8,
           log warning "Received unexpected TokenUnavailable from %s".format(sender)
         case x: TokenCreationState.AnticipatingNewToken =>
           tokenCreationState = x.fail
-          schedule(tokenRetryInterval(tokenCreationState.nrOfFails),
-            lifecycle.actor, Lifecycle.TokenRequest)
+          schedule(tokenRetryInterval(tokenCreationState.nrOfFails), self, Internal.RequestToken)
       }
 
     case m =>
@@ -211,6 +210,7 @@ object Server {
     case object MaybeIssueLeases
     case class MaybeExpire(lease: Lease[_], timerId: Int)
     case object MaybeRequestToken
+    case object RequestToken
   }
 
   /** An enumeration of where the server is in its conversation with the lifecycle actor
