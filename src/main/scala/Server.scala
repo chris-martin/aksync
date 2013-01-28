@@ -15,7 +15,7 @@ import Server._
   * @param poolSizeRange Minimum and maximum number of tokens in the pool.
   * @param leaseTimeout Amount of time that a lease is allowed to persist without acknowledgement.
   * @param tokenRetryInterval Amount of time to wait between retries when token creation fails.
-  * Defaults to an exponential backoff,
+  * Defaults to an exponential backoff.
   */
 class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
     leaseTimeout: Duration = 30.seconds,
