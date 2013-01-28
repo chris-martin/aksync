@@ -2,10 +2,13 @@ package org.codeswarm.aksync
 
 trait Lifecycle[A] {
 
-  /** Fills the role of a token lifecycle actor. The actor must reply to `TokenRequest` messages,
-    * and may also optionally handle `Destroy` messages.
+  /** Returns an actor which fills the role of a token lifecycle actor. The actor must reply to
+    * `TokenRequest` messages, and may also optionally handle `Destroy` messages.
+    *
+    * This method may use the provided `context` to create an actor that will be supervised by the `Server`.
+    * Alternately, it may ignore the `context` and return an existing actor. The server only calls this method once.
     */
-  def actor: akka.actor.ActorRef
+  def actor(context: akka.actor.ActorContext): akka.actor.ActorRef
 
   def isAlive(a: A): Boolean = true
   final def isDead(a: A): Boolean = !isAlive(a)

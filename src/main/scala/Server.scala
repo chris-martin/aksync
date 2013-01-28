@@ -29,6 +29,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
   private val leases = HashMap[Lease[A], LeaseState]()
   private var tokenCreationState: TokenCreationState = TokenCreationState.NotDoingAnything
   private val random = new Random
+  private val lifecycleActor = lifecycle.actor(context)
 
   override def preStart() {
     self ! Internal.MaybeRequestToken
@@ -95,7 +96,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
           log warning "Expiring a %s (acks: %d) that was issued to %s".
             format(lease, nrOfAcks, lease.client)
           leases -= lease
-          lifecycle.actor ! Lifecycle.Revoked(lease.token)
+          lifecycleActor ! Lifecycle.Revoked(lease.token)
         }
       }
 
@@ -118,7 +119,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
       log debug "Sending Lifecycle.TokenRequest"
 
-      lifecycle.actor ! Lifecycle.TokenRequest
+      lifecycleActor ! Lifecycle.TokenRequest
 
     case Lifecycle.NewToken(token) =>
 
@@ -181,7 +182,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
     // (for example, if the token is a database connection that has timed out).
     while (tokens.headOption.exists(lifecycle.isDead(_))) {
       log debug "Removing dead token"
-      lifecycle.actor ! Lifecycle.Dead(tokens.pop())
+      lifecycleActor ! Lifecycle.Dead(tokens.pop())
     }
 
     // There are no free connections available.

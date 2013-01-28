@@ -1,7 +1,7 @@
 package org.codeswarm.aksync
 
 import akka.testkit.{TestActorRef, TestKit}
-import akka.actor.{Actor, Props, ActorSystem, ActorRef}, akka.event.Logging
+import akka.actor.{Actor, Props, ActorSystem, ActorRef, ActorContext}, akka.event.Logging
 import org.scalatest._
 import scala.concurrent.duration.{Duration, DurationDouble, FiniteDuration}
 import com.typesafe.config.ConfigFactory
@@ -29,7 +29,7 @@ class ServerSuite extends FunSpec {
 
     val lifecycle = new Lifecycle[Token]() {
       override def isAlive(a: Token): Boolean = a.alive
-      override def actor: ActorRef = self
+      override def actor(context: ActorContext): ActorRef = self
     }
 
     val serverProps = Props(new Server[Token](
