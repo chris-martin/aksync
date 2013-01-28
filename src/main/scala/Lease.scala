@@ -8,7 +8,7 @@ package org.codeswarm.aksync
   * `Release` messages should be sent.
   */
 class Lease[+A] private[aksync] (
-    val token: A,
+    val token: A, id: Int,
     private[aksync] val client: akka.actor.ActorRef,
     private[aksync] val server: akka.actor.ActorRef) {
 
@@ -37,7 +37,7 @@ class Lease[+A] private[aksync] (
     }
   }
 
-  override def toString: String = "Lease[%d]".format(hashCode)
+  override def toString: String = "Lease[%x]".format(id)
 
 }
 

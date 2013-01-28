@@ -3,6 +3,7 @@ package org.codeswarm.aksync
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable}
 import collection.mutable.{Queue, HashMap, Stack}
 import concurrent.duration.{Duration, DurationInt, FiniteDuration}
+import util.Random
 
 import Server._
 
@@ -26,6 +27,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
   private val tokens = Stack[A]()
   private val leases = HashMap[Lease[A], LeaseState]()
   private var tokenCreationState: TokenCreationState = TokenCreationState.NotDoingAnything
+  private val random = new Random
 
   override def preStart() {
     self ! Internal.MaybeRequestToken
@@ -186,7 +188,12 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
     }
 
     // Create a new lease.
-    Some(new Lease(tokens.pop(), client = clients.dequeue(), server = self))
+    Some(new Lease(
+      token = tokens.pop(),
+      id = random.nextInt(),
+      client = clients.dequeue(),
+      server = self
+    ))
 
   }
 
