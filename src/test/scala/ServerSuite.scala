@@ -11,7 +11,8 @@ class ServerSuite extends FunSpec {
 
   class Fixture(
     val poolSizeRange: PoolSizeRange,
-    val tokenRetryInterval: RetryInterval.Fixed = (0.25 seconds),
+    val leaseTimeout: LeaseTimeout,
+    val tokenRetryInterval: TokenRetryInterval.Fixed = (0.25 seconds),
     val fast: Duration = (0.05 seconds)
   ) {
 
@@ -33,6 +34,7 @@ class ServerSuite extends FunSpec {
 
     val serverProps = Props(new Server[Token](
       lifecycle = lifecycle,
+      leaseTimeout = leaseTimeout,
       poolSizeRange = poolSizeRange,
       tokenRetryInterval = tokenRetryInterval
     ))
@@ -49,18 +51,24 @@ class ServerSuite extends FunSpec {
 
     def expectMsg[T](obj: T): T = testKit.expectMsg(obj)
 
-    def expectMsg[T](max: FiniteDuration, obj: T): T = testKit.expectMsg(max, obj)
+    def expectMsg[T](obj: T, max: FiniteDuration): T = testKit.expectMsg(max, obj)
 
-    def expectLease[A](token: A): Lease[A] =
-      testKit.expectMsgPF () {
-        case l: Lease[_] if l.token == token =>
-          l.asInstanceOf[Lease[A]]
+    def expectLease[A](token: A, max: Duration = Duration.Undefined): Lease[A] =
+      testKit.expectMsgPF (max = max) {
+        case x: Lease[_] if x.token == token =>
+          x.asInstanceOf[Lease[A]]
       }
 
-    def expectDestroy[A](token: A): Lifecycle.Destroy[A] =
-      testKit.expectMsgPF () {
-        case d: Lifecycle.Destroy[_] if d.token == token =>
-          d.asInstanceOf[Lifecycle.Destroy[A]]
+    def expectDead[A](token: A, max: Duration = Duration.Undefined): Lifecycle.Dead[A] =
+      testKit.expectMsgPF (max = max) {
+        case x: Lifecycle.Dead[_] if x.token == token =>
+          x.asInstanceOf[Lifecycle.Dead[A]]
+      }
+
+    def expectRevoked[A](token: A, max: Duration = Duration.Undefined): Lifecycle.Revoked[A] =
+      testKit.expectMsgPF (max = max) {
+        case x: Lifecycle.Revoked[_] if x.token == token =>
+          x.asInstanceOf[Lifecycle.Revoked[A]]
       }
 
     object Tokens {
@@ -78,9 +86,9 @@ class ServerSuite extends FunSpec {
 
   }
 
-  def withFixture(test: Fixture => Any)(implicit poolSizeRange: PoolSizeRange) {
+  def withFixture(test: Fixture => Any)(implicit poolSizeRange: PoolSizeRange, leaseTimeout: LeaseTimeout = LeaseTimeout.Fixed(30.seconds)) {
 
-    val fixture = new Fixture(poolSizeRange)
+    val fixture = new Fixture(poolSizeRange, leaseTimeout)
     import fixture.system
 
     val logBuffer = new ArrayBuffer[String]
@@ -185,7 +193,7 @@ class ServerSuite extends FunSpec {
         Tokens(1).alive = false
 
         lease.release()
-        expectDestroy(Tokens(1))
+        expectDead(Tokens(1))
         expectMsg(Lifecycle.TokenRequest)
 
         server ! Lifecycle.NewToken(Tokens(2))
@@ -203,7 +211,7 @@ class ServerSuite extends FunSpec {
     it ("should immediately request a token") {
       withFixture { f => import f._
 
-        expectMsg(1.second, Lifecycle.TokenRequest)
+        expectMsg(Lifecycle.TokenRequest, max = (1 second))
 
       }
     }
@@ -225,8 +233,75 @@ class ServerSuite extends FunSpec {
         expectMsg(Lifecycle.TokenRequest)
 
         server ! Lifecycle.TokenUnavailable
-        expectMsg(tokenRetryInterval*3/2, Lifecycle.TokenRequest)
+        expectMsg(Lifecycle.TokenRequest, max = tokenRetryInterval*3/2)
 
+      }
+    }
+
+  }
+
+  describe ("A server with a 0.2-second initial and 1-second subsequent lease timeout") {
+
+    implicit val poolSizeRange: PoolSizeRange = 0 to 1
+    implicit val leaseTimeout: LeaseTimeout =
+      LeaseTimeout.FirstAndSubsequent(first = (0.2 seconds), subsequent = (1 second))
+
+    it ("should revoke a lease not acknowledged within 0.2 seconds") {
+      withFixture { f => import f._
+
+        server ! Lease.Request
+        expectMsg(Lifecycle.TokenRequest)
+
+        server ! Lifecycle.NewToken(Tokens(1))
+        expectLease(Tokens(1))
+
+        expectRevoked(Tokens(1), max = (0.3 seconds))
+
+      }
+    }
+
+    it ("""should revoke a lease that was immediately (but not subsequently) acknowledged,
+        |  after 1 second""".stripMargin) {
+      withFixture { f => import f._
+
+        server ! Lease.Request
+        expectMsg(Lifecycle.TokenRequest)
+
+        server ! Lifecycle.NewToken(Tokens(1))
+        val lease = expectLease(Tokens(1))
+
+        lease.acknowledge()
+        expectNoMsg(max = (0.8 seconds))
+
+        expectRevoked(Tokens(1), max = (0.3 seconds))
+
+      }
+    }
+
+    it ("should not revoke a lease that is acknowledged every half-second then released") {
+      withFixture { f => import f._
+
+        server ! Lease.Request
+        expectMsg(Lifecycle.TokenRequest)
+
+        server ! Lifecycle.NewToken(Tokens(1))
+        val lease = expectLease(Tokens(1))
+
+        lease.acknowledge()
+
+        Thread.sleep(500)
+        lease.acknowledge()
+
+        Thread.sleep(500)
+        lease.acknowledge()
+
+        Thread.sleep(500)
+        lease.acknowledge()
+
+        Thread.sleep(500)
+        lease.release()
+
+        expectNoMsg(max = (2 seconds))
       }
     }
 

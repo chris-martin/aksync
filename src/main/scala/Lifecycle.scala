@@ -31,8 +31,20 @@ object Lifecycle {
 
   /** The `Destroy` message is sent by the server to the token lifecycle actor after a token is
     * removed from the pool, either as a result of inactivity or lease revocation. This is an
-    * opportunity to clean up resources. Handling this message is optional.
+    * opportunity to clean up resources. Handling these messages is optional.
     */
-  case class Destroy[A](token: A)
+  sealed trait Destroy[A] {
+    def token: A
+  }
+
+  /** Indicates that the token was been leased to a client who never returned it.
+    * The token is removed from the pool in case the misbehaving client is still using it.
+    */
+  case class Revoked[A](token: A) extends Destroy[A]
+
+  /** Indicates that the token has been removed from the pool because it is "dead" as
+    * determined by the `Lifecycle#isDead(A)`.
+    */
+  case class Dead[A](token: A) extends Destroy[A]
 
 }

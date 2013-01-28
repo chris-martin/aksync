@@ -15,12 +15,13 @@ import Server._
   * @param lifecycle Strategy for creating and destroying tokens.
   * @param poolSizeRange Minimum and maximum number of tokens in the pool.
   * @param leaseTimeout Amount of time that a lease is allowed to persist without acknowledgement.
+  * Defaults to a short time for the first acknowledgement and a longer duration subsequently.
   * @param tokenRetryInterval Amount of time to wait between retries when token creation fails.
   * Defaults to an exponential backoff.
   */
 class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
-    leaseTimeout: Duration = 30.seconds,
-    tokenRetryInterval: RetryInterval = RetryInterval.ExponentialBackoff())
+    leaseTimeout: LeaseTimeout = LeaseTimeout.FirstAndSubsequent(),
+    tokenRetryInterval: TokenRetryInterval = TokenRetryInterval.ExponentialBackoff())
     (implicit manifestA: Manifest[A]) extends Actor with ActorLogging {
 
   private val clients = Queue[ActorRef]()
@@ -87,12 +88,14 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
       self ! Internal.MaybeRequestToken
 
-    case Internal.MaybeExpire(lease: Lease[A], id: Int) =>
+    case Internal.MaybeExpire(lease: Lease[A], nrOfAcks: Int) =>
 
       leases.get(lease) foreach { state =>
-        if (state.isExpired(id)) {
-          log warning "Expiring a lease (acks: %d) that was issued to %s".format(id, lease.client)
+        if (state.nrOfAcks == nrOfAcks) {
+          log warning "Expiring a %s (acks: %d) that was issued to %s".
+            format(lease, nrOfAcks, lease.client)
           leases -= lease
+          lifecycle.actor ! Lifecycle.Revoked(lease.token)
         }
       }
 
@@ -178,7 +181,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
     // (for example, if the token is a database connection that has timed out).
     while (tokens.headOption.exists(lifecycle.isDead(_))) {
       log debug "Removing dead token"
-      lifecycle.actor ! Lifecycle.Destroy(tokens.pop())
+      lifecycle.actor ! Lifecycle.Dead(tokens.pop())
     }
 
     // There are no free connections available.
@@ -197,45 +200,55 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
   }
 
+  /** State about a lease that is used internally by the server to manage lease expiration.
+    */
   private class LeaseState(lease: Lease[A]) {
 
-    private val ids = (0 until Int.MaxValue).iterator
-    private case class Timer(cancellable: Cancellable, id: Int)
-    private var timer: Option[Timer] = None
+    // The currently-running expiration timer, if there is one. This is None if the lease
+    // will never expire (due to an indefinite timeout).
+    private var timer: Option[Cancellable] = None
 
-    ack()
+    // The number of times this lease has been acknowledged.
+    private[Server] var nrOfAcks = 0
+
+    setTimer()
 
     def ack() {
-
-      timer.foreach(_.cancellable.cancel())
-
-      timer = leaseTimeout match {
-
-        case t: FiniteDuration =>
-          val id = ids.next()
-          val cancellable = schedule(t, self, Internal.MaybeExpire(lease, id))
-          Some(new Timer(cancellable, id))
-
-        case _ => None
-      }
+      nrOfAcks += 1
+      timer foreach (_.cancel())
+      setTimer()
     }
 
-    def isExpired(id: Int): Boolean =
-      timer match {
-        case Some(Timer(_, currentId)) => id == currentId
-        case None => false
+    private def setTimer() {
+      timer = leaseTimeout(nrOfAcks) match {
+        case t: FiniteDuration =>
+          Some(schedule(t, self, Internal.MaybeExpire(lease, nrOfAcks)))
+        case _ =>
+          None
       }
+    }
 
   }
 
 }
 object Server {
 
+  /** Messages that the server sends to itself.
+    */
   private object Internal {
+
     case object MaybeIssueLeases
-    case class MaybeExpire(lease: Lease[_], timerId: Int)
+
+    /** @param nrOfAcks The number of acknowledgements the lease had at the time this message
+      * was scheduled. When this message is received, if the lease has not been acknowledged
+      * since then (its `nrOfAcks` has not changed), then the lease shall be revoked.
+      */
+    case class MaybeExpire(lease: Lease[_], nrOfAcks: Int)
+
     case object MaybeRequestToken
+
     case object RequestToken
+
   }
 
   /** An enumeration of where the server is in its conversation with the lifecycle actor

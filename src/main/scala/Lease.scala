@@ -7,8 +7,7 @@ package org.codeswarm.aksync
   * @param server Server from whom the lease was granted, and to whom `Acknowledge` and
   * `Release` messages should be sent.
   */
-class Lease[+A] private[aksync] (
-    val token: A, id: Int,
+class Lease[+A] private[aksync] (val token: A, id: Int,
     private[aksync] val client: akka.actor.ActorRef,
     private[aksync] val server: akka.actor.ActorRef) {
 
