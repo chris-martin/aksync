@@ -6,6 +6,17 @@ import concurrent.duration.{Duration, DurationInt, FiniteDuration}
 
 import Server._
 
+/** A `Server` mediates access to a pool of "tokens", responding to each client request by
+  * issuing a lease that grant temporary exclusive access to one token until the lease is
+  * released.
+  * @tparam A Token type. This is typically a resource cannot be used concurrently, such as a
+  * database connection.
+  * @param lifecycle Strategy for creating and destroying tokens.
+  * @param poolSizeRange Minimum and maximum number of tokens in the pool.
+  * @param leaseTimeout Amount of time that a lease is allowed to persist without acknowledgement.
+  * @param tokenRetryInterval Amount of time to wait between retries when token creation fails.
+  * Defaults to an exponential backoff,
+  */
 class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
     leaseTimeout: Duration = 30.seconds,
     tokenRetryInterval: RetryInterval = RetryInterval.ExponentialBackoff())
