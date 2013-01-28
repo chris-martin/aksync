@@ -24,16 +24,22 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
     case Lease.Request =>
 
-      log debug "Received: Lease.Request"
+      log debug "Received Lease.Request"
 
-      clients enqueue sender
+      if (poolSizeRange.isZero) {
+        /* If the pool size is fixed at 0, this server will never do anything,
+           so there is no point in enqueuing any requests. */
+      } else {
 
-      self ! Internal.MaybeIssueLeases
-      self ! Internal.MaybeRequestToken
+        clients enqueue sender
+
+        self ! Internal.MaybeIssueLeases
+        self ! Internal.MaybeRequestToken
+      }
 
     case Lease.Acknowledge(lease: Lease[A]) =>
 
-      log debug "Received: Lease.Acknowledge"
+      log debug "Received Lease.Acknowledge"
 
       leases.get(lease) match {
         case Some(state) => state.ack()
@@ -42,7 +48,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
     case Lease.Release(lease: Lease[A]) =>
 
-      log debug "Received: Lease.Release"
+      log debug "Received Lease.Release"
 
       leases.remove(lease) match {
         case Some(state) => tokens push lease.token
@@ -57,15 +63,16 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
         case Some(lease) =>
 
-          log debug "Issuing lease %s".format(lease)
+          log debug "Issuing %s".format(lease)
 
           leases += lease -> new LeaseState(lease)
           lease.client ! lease
           self ! Internal.MaybeIssueLeases
-          self ! Internal.MaybeRequestToken
 
         case None =>
       }
+
+      self ! Internal.MaybeRequestToken
 
     case Internal.MaybeExpire(lease: Lease[A], id: Int) =>
 
@@ -93,13 +100,13 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
     case Internal.RequestToken =>
 
-      log debug "Sending: Lifecycle.TokenRequest"
+      log debug "Sending Lifecycle.TokenRequest"
 
       lifecycle.actor ! Lifecycle.TokenRequest
 
     case Lifecycle.NewToken(token) =>
 
-      log debug "Received: Lifecycle.NewToken"
+      log debug "Received Lifecycle.NewToken"
 
       if (!manifestA.runtimeClass.isAssignableFrom(token.getClass)) {
         log warning "Received NewToken of incorrect type %s".format(token.getClass)
@@ -117,7 +124,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
     case Lifecycle.TokenUnavailable =>
 
-      log debug("Received: Lifecycle.TokenUnavailable")
+      log debug("Received Lifecycle.TokenUnavailable")
 
       tokenCreationState match {
         case TokenCreationState.NotDoingAnything =>

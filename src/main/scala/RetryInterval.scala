@@ -28,4 +28,6 @@ object RetryInterval {
 
   implicit def fixed(value: FiniteDuration): Fixed = Fixed(value)
 
+  implicit def fixedDuration(x: Fixed): FiniteDuration = x.value
+
 }

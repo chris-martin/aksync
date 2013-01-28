@@ -37,9 +37,13 @@ class Lease[+A] private[aksync] (
     }
   }
 
+  override def toString: String = "Lease[%d]".format(hashCode)
+
 }
 
 object Lease {
+
+  def unapply[A](lease: Lease[A]): Option[A] = Some(lease.token)
 
   /** A client actor asks the server for a token lease by sending the `Request` message.
     */
