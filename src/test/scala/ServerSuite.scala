@@ -29,7 +29,7 @@ class ServerSuite extends FunSpec {
 
     val lifecycle = new Lifecycle[Token]() {
       override def isAlive(a: Token): Boolean = a.alive
-      override def actor(context: ActorContext): ActorRef = self
+      override def actor(implicit context: ActorContext): ActorRef = self
     }
 
     val serverProps = Props(new Server[Token](

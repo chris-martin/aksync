@@ -8,7 +8,7 @@ trait Lifecycle[A] {
     * This method may use the provided `context` to create an actor that will be supervised by the `Server`.
     * Alternately, it may ignore the `context` and return an existing actor. The server only calls this method once.
     */
-  def actor(context: akka.actor.ActorContext): akka.actor.ActorRef
+  def actor(implicit context: akka.actor.ActorContext): akka.actor.ActorRef
 
   def isAlive(a: A): Boolean = true
   final def isDead(a: A): Boolean = !isAlive(a)

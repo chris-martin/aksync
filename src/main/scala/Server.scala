@@ -2,7 +2,7 @@ package org.codeswarm.aksync
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable}
 import collection.mutable.{Queue, HashMap, Stack}
-import concurrent.duration.{Duration, DurationInt, FiniteDuration}
+import concurrent.duration.FiniteDuration
 import util.Random
 
 import Server._
@@ -24,12 +24,15 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
     tokenRetryInterval: TokenRetryInterval = TokenRetryInterval.ExponentialBackoff())
     (implicit manifestA: Manifest[A]) extends Actor with ActorLogging {
 
+  val system = context.system
+  import system.{dispatcher, scheduler}
+
   private val clients = Queue[ActorRef]()
   private val tokens = Stack[A]()
   private val leases = HashMap[Lease[A], LeaseState]()
   private var tokenCreationState: TokenCreationState = TokenCreationState.NotDoingAnything
   private val random = new Random
-  private val lifecycleActor = lifecycle.actor(context)
+  private val lifecycleActor = lifecycle.actor
 
   override def preStart() {
     self ! Internal.MaybeRequestToken
@@ -148,18 +151,17 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
           log warning "Received unexpected TokenUnavailable from %s".format(sender)
         case x: TokenCreationState.AnticipatingNewToken =>
           tokenCreationState = x.fail
-          schedule(tokenRetryInterval(tokenCreationState.nrOfFails), self, Internal.RequestToken)
+          scheduler.scheduleOnce(
+            delay = tokenRetryInterval(tokenCreationState.nrOfFails),
+            receiver = self,
+            message = Internal.RequestToken
+          )
       }
 
     case m =>
 
       log warning "Received unrecognized message: %s".format(m)
 
-  }
-
-  private def schedule(delay: FiniteDuration, receiver: ActorRef, message: Any): Cancellable = {
-    val s = context.system; import s._
-    s.scheduler.scheduleOnce(delay, receiver, message)
   }
 
   private def createLease(): Option[Lease[A]] = {
@@ -222,8 +224,12 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
     private def setTimer() {
       timer = leaseTimeout(nrOfAcks) match {
-        case t: FiniteDuration =>
-          Some(schedule(t, self, Internal.MaybeExpire(lease, nrOfAcks)))
+        case delay: FiniteDuration =>
+          Some(scheduler.scheduleOnce(
+            delay = delay,
+            receiver = self,
+            message = Internal.MaybeExpire(lease, nrOfAcks)
+          ))
         case _ =>
           None
       }
