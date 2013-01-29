@@ -18,10 +18,14 @@ import Server._
   * Defaults to a short time for the first acknowledgement and a longer duration subsequently.
   * @param tokenRetryInterval Amount of time to wait between retries when token creation fails.
   * Defaults to an exponential backoff.
+  * @param leaseTransform A function to apply to outgoing `Lease` messages. Defaults to the
+  * identity. This can be a useful way to work around limitations in pattern-matching on
+  * generic types that poses a problem when trying to receive the message type Lease[A].
   */
 class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
     leaseTimeout: LeaseTimeout = LeaseTimeout.FirstAndSubsequent(),
-    tokenRetryInterval: TokenRetryInterval = TokenRetryInterval.ExponentialBackoff())
+    tokenRetryInterval: TokenRetryInterval = TokenRetryInterval.ExponentialBackoff(),
+    leaseTransform: (Lease[A]) => Any = conforms[Lease[A]])
     (implicit manifestA: Manifest[A]) extends Actor with ActorLogging {
 
   val system = context.system
@@ -84,7 +88,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
           log debug "Issuing %s".format(lease)
 
           leases += lease -> new LeaseState(lease)
-          lease.client ! lease
+          lease.client ! leaseTransform(lease)
           self ! Internal.MaybeIssueLeases
 
         case None =>
