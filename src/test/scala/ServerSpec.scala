@@ -7,7 +7,7 @@ import scala.concurrent.duration.{Duration, DurationDouble, FiniteDuration}
 import com.typesafe.config.ConfigFactory
 import collection.mutable.ArrayBuffer
 
-class ServerSuite extends FunSpec {
+class ServerSpec extends FunSpec {
 
   class Fixture(
     val poolSizeRange: PoolSizeRange,
