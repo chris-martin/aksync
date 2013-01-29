@@ -100,6 +100,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
             format(lease, nrOfAcks, lease.client)
           leases -= lease
           lifecycleActor ! Lifecycle.Revoked(lease.token)
+          self ! Internal.MaybeRequestToken
         }
       }
 

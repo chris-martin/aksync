@@ -307,6 +307,58 @@ class ServerSuite extends FunSpec {
 
   }
 
+  describe ("A server with pool size 1") {
+
+    implicit val poolSizeRange: PoolSizeRange = 1 to 1
+    implicit val leaseTimeout: LeaseTimeout = (0.2 seconds)
+
+    it ("should request a new token if the only token is revoked") {
+      withFixture { f => import f._
+
+        expectMsg(Lifecycle.TokenRequest)
+        server ! Lifecycle.NewToken(Tokens(1))
+
+        server ! Lease.Request
+        expectLease(Tokens(1))
+
+        expectRevoked(Tokens(1), max = (1 second))
+        expectMsg(Lifecycle.TokenRequest)
+
+      }
+    }
+
+  }
+
+  describe ("A server with pool size 2") {
+
+    implicit val poolSizeRange: PoolSizeRange = 2 to 2
+
+    it ("should refill itself when both of its tokens die") {
+      withFixture { f => import f._
+
+        expectMsg(Lifecycle.TokenRequest)
+        server ! Lifecycle.NewToken(Tokens(1))
+
+        expectMsg(Lifecycle.TokenRequest)
+        server ! Lifecycle.NewToken(Tokens(2))
+
+        Tokens(1).alive = false
+        Tokens(2).alive = false
+        server ! Lease.Request
+
+        expectDead(Tokens(2))
+        expectDead(Tokens(1))
+        expectMsg(Lifecycle.TokenRequest)
+
+        server ! Lifecycle.NewToken(Tokens(3))
+        expectLease(Tokens(3))
+        expectMsg(Lifecycle.TokenRequest)
+
+      }
+    }
+
+  }
+
 }
 
 class Token(val id: Int, var alive: Boolean = true)
