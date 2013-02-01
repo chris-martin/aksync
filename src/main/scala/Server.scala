@@ -22,6 +22,8 @@ import Server._
   *
   * @param lifecycle Strategy for creating and destroying tokens.
   * @param poolSizeRange Minimum and maximum number of tokens in the pool. Defaults to 2-8.
+  * @param poolStructure Constructor for the collection data structure which will hold unleased
+  * tokens. Defaults to [[Pool.Stack]]. Another good choice is [[Pool.Queue]].
   * @param leaseTimeout Amount of time that a lease is allowed to persist without acknowledgement.
   * Defaults to a short time for the first acknowledgement and a longer duration subsequently.
   * @param tokenRetryInterval Amount of time to wait between retries when token creation fails.
@@ -31,6 +33,7 @@ import Server._
   * generic types that poses a problem when trying to receive the message type `Lease[Token]`.
   */
 class Server[Token](lifecycle: Lifecycle[Token], poolSizeRange: PoolSizeRange = 2 to 8,
+    poolStructure: => Pool[Token] = new Pool.Stack[Token](),
     leaseTimeout: LeaseTimeout = LeaseTimeout.FirstAndSubsequent(),
     tokenRetryInterval: TokenRetryInterval = TokenRetryInterval.ExponentialBackoff(),
     leaseTransform: (Lease[Token]) => Any = conforms[Lease[Token]])
@@ -40,7 +43,7 @@ class Server[Token](lifecycle: Lifecycle[Token], poolSizeRange: PoolSizeRange = 
   import system.{dispatcher, scheduler}
 
   private val clients = Queue[ActorRef]()
-  private val tokens = Stack[Token]()
+  private val tokens = poolStructure
   private val leases = HashMap[StandardLease[Token], LeaseState]()
   private var tokenCreationState: TokenCreationState = TokenCreationState.NotDoingAnything
   private val leaseIds = (1 to Int.MaxValue).iterator
@@ -81,7 +84,7 @@ class Server[Token](lifecycle: Lifecycle[Token], poolSizeRange: PoolSizeRange = 
       log debug "Received Lease.Release[%d]".format(lease.id)
 
       leases.remove(lease) match {
-        case Some(state) => tokens push lease.token
+        case Some(state) => tokens add lease.token
         case None => log warning "Received Release for unknown lease from %s".format(sender)
       }
 
@@ -149,7 +152,7 @@ class Server[Token](lifecycle: Lifecycle[Token], poolSizeRange: PoolSizeRange = 
             log warning "Received unexpected NewToken from %s".format(sender)
           case _: TokenCreationState.AnticipatingNewToken =>
             tokenCreationState = TokenCreationState.NotDoingAnything
-            tokens push token.asInstanceOf[Token]
+            tokens add token.asInstanceOf[Token]
             self ! Internal.MaybeIssueLeases
             self ! Internal.MaybeRequestToken
         }
@@ -195,9 +198,9 @@ class Server[Token](lifecycle: Lifecycle[Token], poolSizeRange: PoolSizeRange = 
 
     // Remove dead tokens as a best effort toward avoiding giving a client a dead token
     // (for example, if the token is a database connection that has timed out).
-    while (tokens.headOption.exists(lifecycle.isDead(_))) {
+    while (tokens.peek.exists(lifecycle.isDead(_))) {
       log debug "Removing dead token"
-      lifecycleActor ! Lifecycle.Dead(tokens.pop())
+      lifecycleActor ! Lifecycle.Dead(tokens.remove())
     }
 
     // There are no free connections available.
@@ -208,7 +211,7 @@ class Server[Token](lifecycle: Lifecycle[Token], poolSizeRange: PoolSizeRange = 
 
     // Create a new lease.
     Some(new StandardLease(
-      token = tokens.pop(),
+      token = tokens.remove(),
       id = leaseIds.next(),
       client = clients.dequeue(),
       server = self
