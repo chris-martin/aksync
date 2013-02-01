@@ -28,13 +28,13 @@ import Server._
   * Defaults to an exponential backoff.
   * @param leaseTransform A function to apply to outgoing `Lease` messages. Defaults to the
   * identity. This can be a useful way to work around limitations in pattern-matching on
-  * generic types that poses a problem when trying to receive the message type Lease[A].
+  * generic types that poses a problem when trying to receive the message type `Lease[Token]`.
   */
 class Server[Token](lifecycle: Lifecycle[Token], poolSizeRange: PoolSizeRange = 2 to 8,
     leaseTimeout: LeaseTimeout = LeaseTimeout.FirstAndSubsequent(),
     tokenRetryInterval: TokenRetryInterval = TokenRetryInterval.ExponentialBackoff(),
     leaseTransform: (Lease[Token]) => Any = conforms[Lease[Token]])
-    (implicit manifestA: Manifest[Token]) extends Actor with ActorLogging {
+    (implicit tokenManifest: Manifest[Token]) extends Actor with ActorLogging {
 
   val system = context.system
   import system.{dispatcher, scheduler}
@@ -141,7 +141,7 @@ class Server[Token](lifecycle: Lifecycle[Token], poolSizeRange: PoolSizeRange = 
 
       log debug "Received Lifecycle.NewToken"
 
-      if (!manifestA.runtimeClass.isAssignableFrom(token.getClass)) {
+      if (!tokenManifest.runtimeClass.isAssignableFrom(token.getClass)) {
         log warning "Received NewToken of incorrect type %s".format(token.getClass)
       } else {
         tokenCreationState match {

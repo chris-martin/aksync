@@ -3,9 +3,9 @@ package org.codeswarm.aksync
 /** When a token is available, the server replies with a `Lease` message to the client
   * who requested it.
   */
-trait Lease[+A] {
+trait Lease[+Token] {
 
-  def token: A
+  def token: Token
 
   /** Sends a [[Lease.Acknowledge]] message to the server.
     */
@@ -19,7 +19,7 @@ trait Lease[+A] {
     * acknowledgement, tries to execute `f` with the token as its parameter, and
     * definitely releases the lease.
     */
-  def apply[B](f: A => B): B
+  def apply[A](f: Token => A): A
 
 }
 
@@ -30,10 +30,10 @@ trait Lease[+A] {
   * @param server Server from whom the lease was granted, and to whom `Acknowledge` and
   * `Release` messages should be sent.
   */
-class StandardLease[+A] private[aksync] (val token: A,
+class StandardLease[+Token] private[aksync] (val token: Token,
     private[aksync] val id: Int,
     private[aksync] val client: akka.actor.ActorRef,
-    private[aksync] val server: akka.actor.ActorRef) extends Lease[A] {
+    private[aksync] val server: akka.actor.ActorRef) extends Lease[Token] {
 
   def acknowledge() {
     server ! Lease.Acknowledge(this)
@@ -43,7 +43,7 @@ class StandardLease[+A] private[aksync] (val token: A,
     server ! Lease.Release(this)
   }
 
-  def apply[B](f: A => B): B = {
+  def apply[B](f: Token => B): B = {
     acknowledge()
     try {
       f(token)
@@ -57,8 +57,6 @@ class StandardLease[+A] private[aksync] (val token: A,
 }
 
 object Lease {
-
-  def unapply[A](lease: Lease[A]): Option[A] = Some(lease.token)
 
   /** A client actor asks the server for a token lease by sending the `Request` message.
     */
@@ -83,7 +81,7 @@ object Lease {
     * abandoned by the server, and a [[Lifecycle.Revoked]] message is sent to the
     * [[Lifecycle]] actor.
     */
-  case class Acknowledge[A](lease: Lease[A])
+  case class Acknowledge[Token](lease: Lease[Token])
 
   /** After the client is done using the token that has been leased to it, it must
     * send a `Release` message to release the token back to the server. This message carries
@@ -91,18 +89,18 @@ object Lease {
     * token that is being returned. Sending this message repeatedly has no effect.
     * A client should send this message to the server by invoking [[Lease.release]].
     */
-  case class Release[A](lease: Lease[A])
+  case class Release[Token](lease: Lease[Token])
 
 }
 
-trait LeaseWrapper[A] extends Lease[A] {
+trait LeaseWrapper[Token] extends Lease[Token] {
 
-  protected def lease: Lease[A]
+  protected def lease: Lease[Token]
 
-  def token: A = lease.token
+  def token: Token = lease.token
   def acknowledge() { lease acknowledge() }
   def release() { lease release() }
-  def apply[B](f: (A) => B): B = lease apply f
+  def apply[A](f: (Token) => A): A = lease apply f
 
   override def toString: String = lease.toString
 

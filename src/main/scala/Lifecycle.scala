@@ -31,7 +31,7 @@ object Lifecycle {
   /** Sending a `NewToken` message to a `Server` adds a token to the pool's collection
     * of managed tokens.
     */
-  case class NewToken[A](token: A)
+  case class NewToken[Token](token: Token)
 
   /** Indicates that a token cannot be created at this time. For example, if the token is
     * a network connection, perhaps the network is down.
@@ -42,26 +42,27 @@ object Lifecycle {
     * removed from the pool, either as a result of inactivity or lease revocation. This is an
     * opportunity to clean up resources. Handling these messages is optional.
     */
-  sealed trait Destroy[A] {
-    def token: A
+  sealed trait Destroy[Token] {
+    def token: Token
   }
 
   /** Indicates that the token was been leased to a client who never returned it.
     * The token is removed from the pool in case the misbehaving client is still using it.
     */
-  case class Revoked[A](token: A) extends Destroy[A]
+  case class Revoked[Token](token: Token) extends Destroy[Token]
 
   /** Indicates that the token has been removed from the pool because it is "dead" as
     * determined by the `Lifecycle#isDead(Token)`.
     */
-  case class Dead[A](token: A) extends Destroy[A]
+  case class Dead[Token](token: Token) extends Destroy[Token]
 
 }
 
 /** Extending this class is the simplest way to implement `Lifecycle`. It is sufficient
   * if token creation and destruction are fast.
   */
-abstract class BlockingLifecycle[A] extends Lifecycle[A] with BlockingCreateAndDestroy[A] {
+abstract class BlockingLifecycle[Token] extends Lifecycle[Token]
+    with BlockingCreateAndDestroy[Token] {
 
   def actor(implicit context: ActorContext): ActorRef =
     context.actorOf(Props(new BlockingCreateAndDestroyActor(this)))
@@ -80,37 +81,37 @@ object UnitLifecycle extends BlockingLifecycle[Unit] {
   * to it (such as if it is a database connection that times out from inactivity).
   * This check is performed by the `Server` actor in a blocking manner, so it should be fast.
   */
-trait LivenessCheck[A] {
-  def isAlive(a: A): Boolean = true
-  final def isDead(a: A): Boolean = !isAlive(a)
+trait LivenessCheck[Token] {
+  def isAlive(token: Token): Boolean = true
+  final def isDead(token: Token): Boolean = !isAlive(token)
 }
 
 /** Specifies the behavior of a `BlockingCreateAndDestroyActor`. These methods are invoked by the
   * actor in a blocking manner, so they should be fast. If lifecycle management actions
   * require more time, you should implement your own lifecycle `Actor`.
   */
-trait BlockingCreateAndDestroy[A] {
+trait BlockingCreateAndDestroy[Token] {
 
   /** Invoked when the lifecycle actor receives a `Lifecycle.TokenRequest` message.
     * Should create a new token for the pool when one is requested. If this method returns
     * successfully, a `Lifecycle.NewToken` is sent to the server. If this method throws
     * an exception, `Lifecycle.TokenUnavailable` is sent instead.
     */
-  def create(): A
+  def create(): Token
 
   /** Invoked when the lifecycle actor receives a `Lifecycle.Revoked` message.
     */
-  def handleRevocation(a: A) { }
+  def handleRevocation(token: Token) { }
 
   /** Invoked when the lifecycle actor receives a `Lifecycle.Dead` message.
     */
-  def handleDeath(a: A) { }
+  def handleDeath(token: Token) { }
 
 }
 
 /** A simple implementation of a lifecycle actor.
   */
-class BlockingCreateAndDestroyActor[A](spec: BlockingCreateAndDestroy[A])
+class BlockingCreateAndDestroyActor[Token](spec: BlockingCreateAndDestroy[Token])
     extends Actor with ActorLogging {
 
   def receive = {
@@ -128,14 +129,14 @@ class BlockingCreateAndDestroyActor[A](spec: BlockingCreateAndDestroy[A])
 
     case m: Lifecycle.Revoked[_] =>
       try {
-        spec.handleRevocation(m.token.asInstanceOf[A])
+        spec.handleRevocation(m.token.asInstanceOf[Token])
       } catch {
         case e: Throwable => log error (e, "Revocation handler failed")
       }
 
     case m: Lifecycle.Dead[_] =>
       try {
-        spec.handleDeath(m.token.asInstanceOf[A])
+        spec.handleDeath(m.token.asInstanceOf[Token])
       } catch {
         case e: Throwable => log error (e, "Death handler failed")
       }
