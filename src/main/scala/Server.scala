@@ -3,7 +3,6 @@ package org.codeswarm.aksync
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable}
 import collection.mutable.{Queue, HashMap, Stack}
 import concurrent.duration.FiniteDuration
-import util.Random
 
 import Server._
 
@@ -35,7 +34,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
   private val tokens = Stack[A]()
   private val leases = HashMap[StandardLease[A], LeaseState]()
   private var tokenCreationState: TokenCreationState = TokenCreationState.NotDoingAnything
-  private val random = new Random
+  private val leaseIds = (1 to Int.MaxValue).iterator
   private val lifecycleActor = lifecycle.actor
 
   override def preStart() {
@@ -61,7 +60,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
     case Lease.Acknowledge(lease: StandardLease[A]) =>
 
-      log debug "Received Lease.Acknowledge"
+      log debug "Received Lease.Acknowledge[%d]".format(lease.id)
 
       leases.get(lease) match {
         case Some(state) => state.ack()
@@ -70,7 +69,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
     case Lease.Release(lease: StandardLease[A]) =>
 
-      log debug "Received Lease.Release"
+      log debug "Received Lease.Release[%d]".format(lease.id)
 
       leases.remove(lease) match {
         case Some(state) => tokens push lease.token
@@ -96,11 +95,11 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
       self ! Internal.MaybeRequestToken
 
-    case Internal.MaybeExpire(lease: StandardLease[A], nrOfAcks: Int) =>
+    case Internal.MaybeRevoke(lease: StandardLease[A], nrOfAcks: Int) =>
 
       leases.get(lease) foreach { state =>
         if (state.nrOfAcks == nrOfAcks) {
-          log warning "Expiring a %s (acks: %d) that was issued to %s".
+          log warning "Revoking %s (acks: %d) that was issued to %s".
             format(lease, nrOfAcks, lease.client)
           leases -= lease
           lifecycleActor ! Lifecycle.Revoked(lease.token)
@@ -201,7 +200,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
     // Create a new lease.
     Some(new StandardLease(
       token = tokens.pop(),
-      id = random.nextInt(),
+      id = leaseIds.next(),
       client = clients.dequeue(),
       server = self
     ))
@@ -213,7 +212,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
   private class LeaseState(lease: Lease[A]) {
 
     // The currently-running expiration timer, if there is one. This is None if the lease
-    // will never expire (due to an indefinite timeout).
+    // will never be revoked due to an indefinite timeout duration.
     private var timer: Option[Cancellable] = None
 
     // The number of times this lease has been acknowledged.
@@ -233,7 +232,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
           Some(scheduler.scheduleOnce(
             delay = delay,
             receiver = self,
-            message = Internal.MaybeExpire(lease, nrOfAcks)
+            message = Internal.MaybeRevoke(lease, nrOfAcks)
           ))
         case _ =>
           None
@@ -255,7 +254,7 @@ object Server {
       * was scheduled. When this message is received, if the lease has not been acknowledged
       * since then (its `nrOfAcks` has not changed), then the lease shall be revoked.
       */
-    case class MaybeExpire(lease: Lease[_], nrOfAcks: Int)
+    case class MaybeRevoke(lease: Lease[_], nrOfAcks: Int)
 
     case object MaybeRequestToken
 
