@@ -1,32 +1,47 @@
 package org.codeswarm.aksync
 
 /** When a token is available, the server replies with a `Lease` message to the client
-  * who requested it. Equality is referential (`equals` and `hashCode` are not overridden).
-  * @param token The thing being leased.
-  * @param client Client who sent the `Request` that resulted in this lease.
-  * @param server Server from whom the lease was granted, and to whom `Acknowledge` and
-  * `Release` messages should be sent.
+  * who requested it.
   */
-class Lease[+A] private[aksync] (val token: A, id: Int,
-    private[aksync] val client: akka.actor.ActorRef,
-    private[aksync] val server: akka.actor.ActorRef) {
+trait Lease[+A] {
+
+  def token: A
 
   /** Sends an `Acknowledge` message to the server.
     */
-  def acknowledge() {
-    server ! Lease.Acknowledge(this)
-  }
+  def acknowledge()
 
   /** Sends a `Release` message to the server.
     */
-  def release() {
-    server ! Lease.Release(this)
-  }
+  def release()
 
   /** Encapsulates the control flow of a typical client using the lease. Sends one
     * acknowledgement, tries to execute `f` with the token as its parameter, and
     * definitely releases the lease.
     */
+  def apply[B](f: A => B): B
+
+}
+
+/** Default lease implementation. Equality is referential (`equals` and `hashCode` are not
+  * overridden).
+  * @param token The thing being leased.
+  * @param client Client who sent the `Request` that resulted in this lease.
+  * @param server Server from whom the lease was granted, and to whom `Acknowledge` and
+  * `Release` messages should be sent.
+  */
+class StandardLease[+A] private[aksync] (val token: A, id: Int,
+    private[aksync] val client: akka.actor.ActorRef,
+    private[aksync] val server: akka.actor.ActorRef) extends Lease[A] {
+
+  def acknowledge() {
+    server ! Lease.Acknowledge(this)
+  }
+
+  def release() {
+    server ! Lease.Release(this)
+  }
+
   def apply[B](f: A => B): B = {
     acknowledge()
     try {
@@ -74,5 +89,18 @@ object Lease {
     * token that is being returned. Sending this message repeatedly has no effect.
     */
   case class Release(lease: Lease[_])
+
+}
+
+trait LeaseWrapper[A] extends Lease[A] {
+
+  protected def lease: Lease[A]
+
+  def token: A = lease.token
+  def acknowledge() { lease acknowledge() }
+  def release() { lease release() }
+  def apply[B](f: (A) => B): B = lease apply f
+
+  override def toString: String = lease.toString
 
 }

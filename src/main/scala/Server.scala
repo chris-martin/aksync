@@ -13,7 +13,7 @@ import Server._
   * @tparam A Token type. This is typically a resource cannot be used concurrently, such as a
   * database connection.
   * @param lifecycle Strategy for creating and destroying tokens.
-  * @param poolSizeRange Minimum and maximum number of tokens in the pool.
+  * @param poolSizeRange Minimum and maximum number of tokens in the pool. Defaults to 2-8.
   * @param leaseTimeout Amount of time that a lease is allowed to persist without acknowledgement.
   * Defaults to a short time for the first acknowledgement and a longer duration subsequently.
   * @param tokenRetryInterval Amount of time to wait between retries when token creation fails.
@@ -33,7 +33,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
   private val clients = Queue[ActorRef]()
   private val tokens = Stack[A]()
-  private val leases = HashMap[Lease[A], LeaseState]()
+  private val leases = HashMap[StandardLease[A], LeaseState]()
   private var tokenCreationState: TokenCreationState = TokenCreationState.NotDoingAnything
   private val random = new Random
   private val lifecycleActor = lifecycle.actor
@@ -59,7 +59,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
         self ! Internal.MaybeRequestToken
       }
 
-    case Lease.Acknowledge(lease: Lease[A]) =>
+    case Lease.Acknowledge(lease: StandardLease[A]) =>
 
       log debug "Received Lease.Acknowledge"
 
@@ -68,7 +68,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
         case None => log warning "Received Acknowledge for unknown lease from %s".format(sender)
       }
 
-    case Lease.Release(lease: Lease[A]) =>
+    case Lease.Release(lease: StandardLease[A]) =>
 
       log debug "Received Lease.Release"
 
@@ -96,7 +96,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
       self ! Internal.MaybeRequestToken
 
-    case Internal.MaybeExpire(lease: Lease[A], nrOfAcks: Int) =>
+    case Internal.MaybeExpire(lease: StandardLease[A], nrOfAcks: Int) =>
 
       leases.get(lease) foreach { state =>
         if (state.nrOfAcks == nrOfAcks) {
@@ -169,7 +169,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
   }
 
-  private def createLease(): Option[Lease[A]] = {
+  private def createLease(): Option[StandardLease[A]] = {
 
     // Remove terminated requestors to avoid wasting time issuing a lease to a dead actor.
     // This does not guarantee that it will never happen (there is a race condition), but
@@ -199,7 +199,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
     }
 
     // Create a new lease.
-    Some(new Lease(
+    Some(new StandardLease(
       token = tokens.pop(),
       id = random.nextInt(),
       client = clients.dequeue(),

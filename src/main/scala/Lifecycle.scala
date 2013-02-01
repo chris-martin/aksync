@@ -1,17 +1,23 @@
 package org.codeswarm.aksync
 
-trait Lifecycle[A] {
+import akka.actor._
+
+/** A `Lifecycle` defines how tokens are born, how they die, and what happens after they die.
+  * You can either extend this trait directly, or extend [[BlockingLifecycle]] if it is
+  * sufficient.
+  */
+trait Lifecycle[A] extends LivenessCheck[A] {
 
   /** Returns an actor which fills the role of a token lifecycle actor. The actor must reply to
-    * `TokenRequest` messages, and may also optionally handle `Destroy` messages.
+    * `TokenRequest` messages, and may also optionally handle `Destroy` messages. See the
+    * [[Lifecycle$ Lifecyle companion object]] for a more complete description of the messages
+    * that this actor is expected to deal with.
     *
-    * This method may use the provided `context` to create an actor that will be supervised by the `Server`.
-    * Alternately, it may ignore the `context` and return an existing actor. The server only calls this method once.
+    * This method may use the provided `context` to create an actor that will be supervised by
+    * the `Server`. Alternately, it may ignore the `context` and return an existing actor. The
+    * server only calls this method once.
     */
   def actor(implicit context: akka.actor.ActorContext): akka.actor.ActorRef
-
-  def isAlive(a: A): Boolean = true
-  final def isDead(a: A): Boolean = !isAlive(a)
 
 }
 
@@ -49,5 +55,91 @@ object Lifecycle {
     * determined by the `Lifecycle#isDead(A)`.
     */
   case class Dead[A](token: A) extends Destroy[A]
+
+}
+
+/** Extending this class is the simplest way to implement `Lifecycle`. It is sufficient
+  * if token creation and destruction are fast.
+  */
+abstract class BlockingLifecycle[A] extends Lifecycle[A] with BlockingCreateAndDestroy[A] {
+
+  def actor(implicit context: ActorContext): ActorRef =
+    context.actorOf(Props(new BlockingCreateAndDestroyActor(this)))
+
+}
+
+/** The simplest possible lifecycle. Since every token is the same object, a `Server` with a
+  * unit lifecycle merely serves as a semaphore.
+  */
+object UnitLifecycle extends BlockingLifecycle[Unit] {
+  def create() {}
+}
+
+/** Determines whether a token is alive or dead. The general idea is that a token is
+  * alive when it is first created, and may die at some point if something bad happens
+  * to it (such as if it is a database connection that times out from inactivity).
+  * This check is performed by the `Server` actor in a blocking manner, so it should be fast.
+  */
+trait LivenessCheck[A] {
+  def isAlive(a: A): Boolean = true
+  final def isDead(a: A): Boolean = !isAlive(a)
+}
+
+/** Specifies the behavior of a `BlockingCreateAndDestroyActor`. These methods are invoked by the
+  * actor in a blocking manner, so they should be fast. If lifecycle management actions
+  * require more time, you should implement your own lifecycle `Actor`.
+  */
+trait BlockingCreateAndDestroy[A] {
+
+  /** Invoked when the lifecycle actor receives a `Lifecycle.TokenRequest` message.
+    * Should create a new token for the pool when one is requested. If this method returns
+    * successfully, a `Lifecycle.NewToken` is sent to the server. If this method throws
+    * an exception, `Lifecycle.TokenUnavailable` is sent instead.
+    */
+  def create(): A
+
+  /** Invoked when the lifecycle actor receives a `Lifecycle.Revoked` message.
+    */
+  def handleRevocation(a: A) { }
+
+  /** Invoked when the lifecycle actor receives a `Lifecycle.Dead` message.
+    */
+  def handleDeath(a: A) { }
+
+}
+
+/** A simple implementation of a lifecycle actor.
+  */
+class BlockingCreateAndDestroyActor[A](spec: BlockingCreateAndDestroy[A])
+    extends Actor with ActorLogging {
+
+  def receive = {
+
+    case Lifecycle.TokenRequest =>
+      sender ! (
+        try {
+          Lifecycle.NewToken(spec.create())
+        } catch {
+          case e: Throwable =>
+            log error (e, "Token creation failed")
+            Lifecycle.TokenUnavailable
+        }
+      )
+
+    case m: Lifecycle.Revoked[_] =>
+      try {
+        spec.handleRevocation(m.token.asInstanceOf[A])
+      } catch {
+        case e: Throwable => log error (e, "Revocation handler failed")
+      }
+
+    case m: Lifecycle.Dead[_] =>
+      try {
+        spec.handleDeath(m.token.asInstanceOf[A])
+      } catch {
+        case e: Throwable => log error (e, "Death handler failed")
+      }
+
+  }
 
 }

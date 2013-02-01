@@ -9,6 +9,19 @@ import collection.mutable.ArrayBuffer
 
 class ServerSpec extends FunSpec {
 
+  class Token(val id: Int, var alive: Boolean = true)
+
+  class LogActor(val buffer: ArrayBuffer[String]) extends Actor {
+
+    def receive = {
+
+      case e: akka.event.Logging.LogEvent =>
+        buffer += List(e.logSource, e.message).mkString(" ")
+
+    }
+
+  }
+
   class Fixture(
     val poolSizeRange: PoolSizeRange,
     val leaseTimeout: LeaseTimeout,
@@ -18,7 +31,7 @@ class ServerSpec extends FunSpec {
 
     implicit val system = ActorSystem("test", ConfigFactory.parseString("""
       akka {
-        event-handlers = [org.codeswarm.aksync.NoLogging]
+        event-handlers = [org.codeswarm.aksync.NoActorLogging]
         loglevel = DEBUG
       }
     """))
@@ -356,30 +369,6 @@ class ServerSpec extends FunSpec {
 
       }
     }
-
-  }
-
-}
-
-class Token(val id: Int, var alive: Boolean = true)
-
-class LogActor(val buffer: ArrayBuffer[String]) extends Actor {
-
-  def receive = {
-
-    case e: akka.event.Logging.LogEvent =>
-      buffer += List(e.logSource, e.message).mkString(" ")
-
-  }
-
-}
-
-class NoLogging extends Actor {
-
-  def receive = {
-
-    case Logging.InitializeLogger(_) =>
-      sender ! Logging.LoggerInitialized
 
   }
 
