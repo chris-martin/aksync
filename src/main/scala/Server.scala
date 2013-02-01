@@ -1,16 +1,25 @@
 package org.codeswarm.aksync
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable}
-import collection.mutable.{Queue, HashMap, Stack}
-import concurrent.duration.FiniteDuration
+import scala.collection.mutable.{Queue, HashMap, Stack}
+import scala.concurrent.duration.FiniteDuration
 
 import Server._
 
 /** A `Server` mediates access to a pool of "tokens", responding to each client request by
   * issuing a lease that grant temporary exclusive access to one token until the lease is
   * released.
-  * @tparam A Token type. This is typically a resource cannot be used concurrently, such as a
-  * database connection.
+  *
+  * A client actor initiates communication with the server by sending the [[Lease.Request]]
+  * message. The requestor's `ActorRef` is held in a FIFO queue until a token is available,
+  * at which point the server replies with a [[Lease]]. The client is required to
+  * [[Lease.Acknowledge acknowledge]] the lease, and to [[Lease.Release release]] it when
+  * finished using it. [[Lease.apply]] is a convenient way to ensure that your clients handles
+  * its leases properly.
+  *
+  * @tparam Token Token type. This is typically a resource cannot be used concurrently, such
+  * as a database connection.
+  *
   * @param lifecycle Strategy for creating and destroying tokens.
   * @param poolSizeRange Minimum and maximum number of tokens in the pool. Defaults to 2-8.
   * @param leaseTimeout Amount of time that a lease is allowed to persist without acknowledgement.
@@ -21,18 +30,18 @@ import Server._
   * identity. This can be a useful way to work around limitations in pattern-matching on
   * generic types that poses a problem when trying to receive the message type Lease[A].
   */
-class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
+class Server[Token](lifecycle: Lifecycle[Token], poolSizeRange: PoolSizeRange = 2 to 8,
     leaseTimeout: LeaseTimeout = LeaseTimeout.FirstAndSubsequent(),
     tokenRetryInterval: TokenRetryInterval = TokenRetryInterval.ExponentialBackoff(),
-    leaseTransform: (Lease[A]) => Any = conforms[Lease[A]])
-    (implicit manifestA: Manifest[A]) extends Actor with ActorLogging {
+    leaseTransform: (Lease[Token]) => Any = conforms[Lease[Token]])
+    (implicit manifestA: Manifest[Token]) extends Actor with ActorLogging {
 
   val system = context.system
   import system.{dispatcher, scheduler}
 
   private val clients = Queue[ActorRef]()
-  private val tokens = Stack[A]()
-  private val leases = HashMap[StandardLease[A], LeaseState]()
+  private val tokens = Stack[Token]()
+  private val leases = HashMap[StandardLease[Token], LeaseState]()
   private var tokenCreationState: TokenCreationState = TokenCreationState.NotDoingAnything
   private val leaseIds = (1 to Int.MaxValue).iterator
   private val lifecycleActor = lifecycle.actor
@@ -58,7 +67,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
         self ! Internal.MaybeRequestToken
       }
 
-    case Lease.Acknowledge(lease: StandardLease[A]) =>
+    case Lease.Acknowledge(lease: StandardLease[Token]) =>
 
       log debug "Received Lease.Acknowledge[%d]".format(lease.id)
 
@@ -67,7 +76,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
         case None => log warning "Received Acknowledge for unknown lease from %s".format(sender)
       }
 
-    case Lease.Release(lease: StandardLease[A]) =>
+    case Lease.Release(lease: StandardLease[Token]) =>
 
       log debug "Received Lease.Release[%d]".format(lease.id)
 
@@ -95,7 +104,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
       self ! Internal.MaybeRequestToken
 
-    case Internal.MaybeRevoke(lease: StandardLease[A], nrOfAcks: Int) =>
+    case Internal.MaybeRevoke(lease: StandardLease[Token], nrOfAcks: Int) =>
 
       leases.get(lease) foreach { state =>
         if (state.nrOfAcks == nrOfAcks) {
@@ -140,7 +149,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
             log warning "Received unexpected NewToken from %s".format(sender)
           case _: TokenCreationState.AnticipatingNewToken =>
             tokenCreationState = TokenCreationState.NotDoingAnything
-            tokens push token.asInstanceOf[A]
+            tokens push token.asInstanceOf[Token]
             self ! Internal.MaybeIssueLeases
             self ! Internal.MaybeRequestToken
         }
@@ -168,7 +177,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
   }
 
-  private def createLease(): Option[StandardLease[A]] = {
+  private def createLease(): Option[StandardLease[Token]] = {
 
     // Remove terminated requestors to avoid wasting time issuing a lease to a dead actor.
     // This does not guarantee that it will never happen (there is a race condition), but
@@ -209,7 +218,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
 
   /** State about a lease that is used internally by the server to manage lease expiration.
     */
-  private class LeaseState(lease: Lease[A]) {
+  private class LeaseState(lease: Lease[Token]) {
 
     // The currently-running expiration timer, if there is one. This is None if the lease
     // will never be revoked due to an indefinite timeout duration.
@@ -242,7 +251,7 @@ class Server[A](lifecycle: Lifecycle[A], poolSizeRange: PoolSizeRange = 2 to 8,
   }
 
 }
-object Server {
+private object Server {
 
   /** Messages that the server sends to itself.
     */

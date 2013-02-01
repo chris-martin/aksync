@@ -1,6 +1,7 @@
 package org.codeswarm.aksync
 
-import concurrent.duration.{Duration, DurationInt, FiniteDuration}
+import scala.concurrent.duration._
+import scala.language.implicitConversions
 
 /** The amount of time that a lease can survive without being acknowledged. If a lease is
   * not acknowledged or released within this time frame, the server revokes it.

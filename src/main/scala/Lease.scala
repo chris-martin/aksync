@@ -7,11 +7,11 @@ trait Lease[+A] {
 
   def token: A
 
-  /** Sends an `Acknowledge` message to the server.
+  /** Sends a [[Lease.Acknowledge]] message to the server.
     */
   def acknowledge()
 
-  /** Sends a `Release` message to the server.
+  /** Sends a [[Lease.Release]] message to the server.
     */
   def release()
 
@@ -64,8 +64,8 @@ object Lease {
     */
   case object Request
 
-  /** `Acknowledge` is an affirmation that the client has received a lease.
-    * You can send this message to the server by invoking `Lease#acknowledge()`.
+  /** `Acknowledge` is an affirmation that the client has received and is using a lease.
+    * A client should send this message to the server by invoking [[Lease.acknowledge]].
     *
     * == Purpose ==
     * If the server notices that a lease has been out for some amount of time without
@@ -79,17 +79,19 @@ object Lease {
     * There is no harm in acknowledging more often than necessary.
     *
     * == Lease revocation ==
-    * When a lease is revoked, its slot in the server opens up, and its token is abandoned
-    * by the server. If the connection truly is lost, it will time out on its own.
+    * When a lease is revoked, its slot in the server's pool opens up, and its token is
+    * abandoned by the server, and a [[Lifecycle.Revoked]] message is sent to the
+    * [[Lifecycle]] actor.
     */
-  case class Acknowledge(lease: Lease[_])
+  case class Acknowledge[A](lease: Lease[A])
 
   /** After the client is done using the token that has been leased to it, it must
     * send a `Release` message to release the token back to the server. This message carries
     * with it the promise that no one other than the server is maintaining a reference to the
     * token that is being returned. Sending this message repeatedly has no effect.
+    * A client should send this message to the server by invoking [[Lease.release]].
     */
-  case class Release(lease: Lease[_])
+  case class Release[A](lease: Lease[A])
 
 }
 

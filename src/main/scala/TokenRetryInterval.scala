@@ -1,6 +1,7 @@
 package org.codeswarm.aksync
 
-import concurrent.duration.{Duration, DurationInt, FiniteDuration}
+import scala.concurrent.duration._
+import scala.language.implicitConversions
 
 trait TokenRetryInterval {
 

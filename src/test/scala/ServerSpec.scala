@@ -25,8 +25,8 @@ class ServerSpec extends FunSpec {
   class Fixture(
     val poolSizeRange: PoolSizeRange,
     val leaseTimeout: LeaseTimeout,
-    val tokenRetryInterval: TokenRetryInterval.Fixed = (0.25 seconds),
-    val fast: Duration = (0.05 seconds)
+    val tokenRetryInterval: TokenRetryInterval.Fixed = (0.25).seconds,
+    val fast: Duration = (0.05).seconds
   ) {
 
     implicit val system = ActorSystem("test", ConfigFactory.parseString(
@@ -74,17 +74,19 @@ class ServerSpec extends FunSpec {
           x.asInstanceOf[Lease[A]]
       }
 
-    def expectDead[A](token: A, max: Duration = Duration.Undefined): Lifecycle.Dead[A] =
+    def expectDead[A](token: A, max: Duration = Duration.Undefined) {
       testKit.expectMsgPF (max = max) {
         case x: Lifecycle.Dead[_] if x.token == token =>
           x.asInstanceOf[Lifecycle.Dead[A]]
       }
+    }
 
-    def expectRevoked[A](token: A, max: Duration = Duration.Undefined): Lifecycle.Revoked[A] =
+    def expectRevoked[A](token: A, max: Duration = Duration.Undefined) {
       testKit.expectMsgPF (max = max) {
         case x: Lifecycle.Revoked[_] if x.token == token =>
           x.asInstanceOf[Lifecycle.Revoked[A]]
       }
+    }
 
     object Tokens {
       val map = collection.mutable.HashMap[Int, Token]()
@@ -227,7 +229,7 @@ class ServerSpec extends FunSpec {
     it ("should immediately request a token") {
       withFixture { f => import f._
 
-        expectMsg(Lifecycle.TokenRequest, max = (1 second))
+        expectMsg(Lifecycle.TokenRequest, max = 1.second)
 
       }
     }
@@ -260,7 +262,7 @@ class ServerSpec extends FunSpec {
 
     implicit val poolSizeRange: PoolSizeRange = 0 to 1
     implicit val leaseTimeout: LeaseTimeout =
-      LeaseTimeout.FirstAndSubsequent(first = (0.2 seconds), subsequent = (1 second))
+      LeaseTimeout.FirstAndSubsequent(first = (0.2).seconds, subsequent = 1.second)
 
     it ("should revoke a lease not acknowledged within 0.2 seconds") {
       withFixture { f => import f._
@@ -271,7 +273,7 @@ class ServerSpec extends FunSpec {
         server ! Lifecycle.NewToken(Tokens(1))
         expectLease(Tokens(1))
 
-        expectRevoked(Tokens(1), max = (0.3 seconds))
+        expectRevoked(Tokens(1), max = (0.3).seconds)
 
       }
     }
@@ -287,9 +289,9 @@ class ServerSpec extends FunSpec {
         val lease = expectLease(Tokens(1))
 
         lease.acknowledge()
-        expectNoMsg(max = (0.8 seconds))
+        expectNoMsg(max = (0.8).seconds)
 
-        expectRevoked(Tokens(1), max = (0.3 seconds))
+        expectRevoked(Tokens(1), max = (0.3).seconds)
 
       }
     }
@@ -317,7 +319,7 @@ class ServerSpec extends FunSpec {
         Thread.sleep(500)
         lease.release()
 
-        expectNoMsg(max = (2 seconds))
+        expectNoMsg(max = 2.seconds)
       }
     }
 
@@ -326,7 +328,7 @@ class ServerSpec extends FunSpec {
   describe ("A server with pool size 1") {
 
     implicit val poolSizeRange: PoolSizeRange = 1 to 1
-    implicit val leaseTimeout: LeaseTimeout = (0.2 seconds)
+    implicit val leaseTimeout: LeaseTimeout = (0.2).seconds
 
     it ("should request a new token if the only token is revoked") {
       withFixture { f => import f._
@@ -337,7 +339,7 @@ class ServerSpec extends FunSpec {
         server ! Lease.Request
         expectLease(Tokens(1))
 
-        expectRevoked(Tokens(1), max = (1 second))
+        expectRevoked(Tokens(1), max = 1.second)
         expectMsg(Lifecycle.TokenRequest)
 
       }

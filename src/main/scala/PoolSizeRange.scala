@@ -1,5 +1,7 @@
 package org.codeswarm.aksync
 
+import scala.language.implicitConversions
+
 case class PoolSizeRange(minOption: Option[Int], maxOption: Option[Int]) {
 
   for (min <- minOption if min < 0)

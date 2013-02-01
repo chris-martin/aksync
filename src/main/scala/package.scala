@@ -8,8 +8,9 @@ package org.codeswarm
   * access to tokens will communicate. A `Server` must be configured with a [[Lifecycle]]
   * that defines how tokens are created (and may also handle their destruction).
   * A client `Actor` sends the `Server` the [[Lease.Request]] message, and the server
-  * responds with a [[Lease]] when a token is available.
+  * responds with a [[Lease]].
   *
-  * One example use of `Aksync` is as a pool of `java.sql.Connection`s.
+  * One envisioned use of `Aksync` is to maintain a pool of `java.sql.Connection`s.
+  * Or, with [[UnitLifecycle]], an `Aksync` server can be used simply as a semaphore.
   */
 package object aksync {}

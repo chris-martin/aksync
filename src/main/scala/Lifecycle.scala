@@ -6,7 +6,7 @@ import akka.actor._
   * You can either extend this trait directly, or extend [[BlockingLifecycle]] if it is
   * sufficient.
   */
-trait Lifecycle[A] extends LivenessCheck[A] {
+trait Lifecycle[Token] extends LivenessCheck[Token] {
 
   /** Returns an actor which fills the role of a token lifecycle actor. The actor must reply to
     * `TokenRequest` messages, and may also optionally handle `Destroy` messages. See the
@@ -52,7 +52,7 @@ object Lifecycle {
   case class Revoked[A](token: A) extends Destroy[A]
 
   /** Indicates that the token has been removed from the pool because it is "dead" as
-    * determined by the `Lifecycle#isDead(A)`.
+    * determined by the `Lifecycle#isDead(Token)`.
     */
   case class Dead[A](token: A) extends Destroy[A]
 
