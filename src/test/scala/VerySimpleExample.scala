@@ -2,10 +2,22 @@ package org.codeswarm.aksync
 
 import akka.actor._
 import collection.mutable._
+import org.scalatest.BeforeAndAfter
+import com.typesafe.config.ConfigFactory
 
 /** A quick introductory example of how to create and use a basic `Server`.
   */
-class VerySimpleExample extends org.scalatest.FreeSpec {
+class VerySimpleExample extends org.scalatest.FreeSpec with BeforeAndAfter {
+
+  var system: ActorSystem = null
+
+  before {
+    system = ActorSystem("test", ConfigFactory.parseString("akka.daemonic = on"))
+  }
+
+  after {
+    system.shutdown()
+  }
 
   "Very simple example" in {
 
@@ -30,8 +42,6 @@ class VerySimpleExample extends org.scalatest.FreeSpec {
       val ids = (1 to Int.MaxValue).iterator
       def create(): ExampleToken = ExampleToken(ids.next())
     }
-
-    val system = ActorSystem()
 
     val server = system.actorOf(Props(new Server[ExampleToken](
 
@@ -97,8 +107,6 @@ class VerySimpleExample extends org.scalatest.FreeSpec {
       "Client_B releases token 2",
       "Client_C releases token 1"
     ))
-
-    system.shutdown()
 
   }
 

@@ -29,12 +29,14 @@ class ServerSpec extends FunSpec {
     val fast: Duration = (0.05 seconds)
   ) {
 
-    implicit val system = ActorSystem("test", ConfigFactory.parseString("""
-      akka {
-        event-handlers = [org.codeswarm.aksync.NoActorLogging]
-        loglevel = DEBUG
-      }
-    """))
+    implicit val system = ActorSystem("test", ConfigFactory.parseString(
+      """
+        |akka {
+        |  event-handlers = [org.codeswarm.aksync.NoActorLogging]
+        |  loglevel = DEBUG
+        |  daemonic = on
+        |}
+      """.stripMargin))
 
     val testKit = new TestKit(system)
 
