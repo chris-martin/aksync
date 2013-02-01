@@ -1,0 +1,399 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html>
+        <head>
+          <title>aksync - org.codeswarm.aksync</title>
+          <meta name="description" content="aksync - org.codeswarm.aksync" />
+          <meta name="keywords" content="aksync org.codeswarm.aksync" />
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link href="../../../lib/template.css" media="screen" type="text/css" rel="stylesheet" />
+      <link href="../../../lib/diagrams.css" media="screen" type="text/css" rel="stylesheet" id="diagrams-css" />
+      <script type="text/javascript" src="../../../lib/jquery.js" id="jquery-js"></script>
+      <script type="text/javascript" src="../../../lib/jquery-ui.js"></script>
+      <script type="text/javascript" src="../../../lib/template.js"></script>
+      <script type="text/javascript" src="../../../lib/tools.tooltip.js"></script>
+      
+      <script type="text/javascript">
+         if(top === self) {
+            var url = '../../../index.html';
+            var hash = 'org.codeswarm.aksync.package';
+            var anchor = window.location.hash;
+            var anchor_opt = '';
+            if (anchor.length >= 1)
+              anchor_opt = '@' + anchor.substring(1);
+            window.location.href = url + '#' + hash + anchor_opt;
+         }
+   	  </script>
+    
+        </head>
+        <body class="value">
+      <div id="definition">
+        <img src="../../../lib/package_big.png" />
+        <p id="owner"><a href="../../package.html" class="extype" name="org">org</a>.<a href="../package.html" class="extype" name="org.codeswarm">codeswarm</a></p>
+        <h1>aksync</h1>
+      </div>
+
+      <h4 id="signature" class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <span class="name">aksync</span>
+      </span>
+      </h4>
+      
+          <div id="comment" class="fullcommenttop"><div class="comment cmt"><p><code>Aksync</code> provides Akka <code>Actor</code>s with mediated access to a pool of resources that
+require exclusive access. It can be used as a bridge between an actor system and a
+blocking API.</p><p>The main class in this package is <a href="Server.html" class="extype" name="org.codeswarm.aksync.Server">Server</a>, the <code>Actor</code> with which clients needing
+access to tokens will communicate. A <code>Server</code> must be configured with a <a href="Lifecycle.html" class="extype" name="org.codeswarm.aksync.Lifecycle">Lifecycle</a>
+that defines how tokens are created (and may also handle their destruction).
+A client <code>Actor</code> sends the <code>Server</code> the <a href="Lease$$Request$.html" class="extype" name="org.codeswarm.aksync.Lease.Request">Lease.Request</a> message, and the server
+responds with a <a href="Lease.html" class="extype" name="org.codeswarm.aksync.Lease">Lease</a>.</p><p>One envisioned use of <code>Aksync</code> is to maintain a pool of <code>java.sql.Connection</code>s.
+Or, with <a href="UnitLifecycle$.html" class="extype" name="org.codeswarm.aksync.UnitLifecycle">UnitLifecycle</a>, an <code>Aksync</code> server can be used simply as a semaphore.
+</p></div><div class="toggleContainer block">
+          <span class="toggle">Linear Supertypes</span>
+          <div class="superTypes hiddenContent"><span class="extype" name="scala.AnyRef">AnyRef</span>, <span class="extype" name="scala.Any">Any</span></div>
+        </div></div>
+        
+
+      <div id="mbrsel">
+        <div id="textfilter"><span class="pre"></span><span class="input"><input id="mbrsel-input" type="text" accesskey="/" /></span><span class="post"></span></div>
+        <div id="order">
+              <span class="filtertype">Ordering</span>
+              <ol>
+                
+                <li class="alpha in"><span>Alphabetic</span></li>
+                <li class="inherit out"><span>By inheritance</span></li>
+              </ol>
+            </div>
+        <div id="ancestors">
+                <span class="filtertype">Inherited<br />
+                </span>
+                <ol id="linearization">
+                  <li class="in" name="org.codeswarm.aksync"><span>aksync</span></li><li class="in" name="scala.AnyRef"><span>AnyRef</span></li><li class="in" name="scala.Any"><span>Any</span></li>
+                </ol>
+              </div><div id="ancestors">
+            <span class="filtertype"></span>
+            <ol>
+              <li class="hideall out"><span>Hide All</span></li>
+              <li class="showall in"><span>Show all</span></li>
+            </ol>
+            <a href="http://docs.scala-lang.org/overviews/scaladoc/usage.html#members" target="_blank">Learn more about member selection</a>
+          </div>
+        <div id="visbl">
+            <span class="filtertype">Visibility</span>
+            <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+          </div>
+      </div>
+
+      <div id="template">
+        <div id="allMembers">
+        
+
+        <div id="types" class="types members">
+              <h3>Type Members</h3>
+              <ol><li name="org.codeswarm.aksync.BlockingCreateAndDestroy" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="BlockingCreateAndDestroy[Token]extendsObject"></a>
+      <a id="BlockingCreateAndDestroy[Token]:BlockingCreateAndDestroy[Token]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="BlockingCreateAndDestroy.html"><span class="name">BlockingCreateAndDestroy</span></a><span class="tparams">[<span name="Token">Token</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Specifies the behavior of a <code>BlockingCreateAndDestroyActor</code>.</p>
+    </li><li name="org.codeswarm.aksync.BlockingCreateAndDestroyActor" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="BlockingCreateAndDestroyActor[Token]extendsActorwithActorLogging"></a>
+      <a id="BlockingCreateAndDestroyActor[Token]:BlockingCreateAndDestroyActor[Token]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="BlockingCreateAndDestroyActor.html"><span class="name">BlockingCreateAndDestroyActor</span></a><span class="tparams">[<span name="Token">Token</span>]</span><span class="result"> extends <span class="extype" name="akka.actor.Actor">Actor</span> with <span class="extype" name="akka.actor.ActorLogging">ActorLogging</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">A simple implementation of a lifecycle actor.</p>
+    </li><li name="org.codeswarm.aksync.BlockingLifecycle" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="BlockingLifecycle[Token]extendsLifecycle[Token]withBlockingCreateAndDestroy[Token]"></a>
+      <a id="BlockingLifecycle[Token]:BlockingLifecycle[Token]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">abstract </span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="BlockingLifecycle.html"><span class="name">BlockingLifecycle</span></a><span class="tparams">[<span name="Token">Token</span>]</span><span class="result"> extends <a href="Lifecycle.html" class="extype" name="org.codeswarm.aksync.Lifecycle">Lifecycle</a>[<span class="extype" name="org.codeswarm.aksync.BlockingLifecycle.Token">Token</span>] with <a href="BlockingCreateAndDestroy.html" class="extype" name="org.codeswarm.aksync.BlockingCreateAndDestroy">BlockingCreateAndDestroy</a>[<span class="extype" name="org.codeswarm.aksync.BlockingLifecycle.Token">Token</span>]</span>
+      </span>
+      </h4>
+      <p class="comment cmt">Extending this class is the simplest way to implement <code>Lifecycle</code>.</p>
+    </li><li name="org.codeswarm.aksync.Lease" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Lease[+Token]extendsObject"></a>
+      <a id="Lease[+Token]:Lease[Token]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Lease.html"><span class="name">Lease</span></a><span class="tparams">[<span name="Token">+Token</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">When a token is available, the server replies with a <code>Lease</code> message to the client
+who requested it.</p>
+    </li><li name="org.codeswarm.aksync.LeaseTimeout" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="LeaseTimeoutextendsObject"></a>
+      <a id="LeaseTimeout:LeaseTimeout"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="LeaseTimeout.html"><span class="name">LeaseTimeout</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">The amount of time that a lease can survive without being acknowledged.</p>
+    </li><li name="org.codeswarm.aksync.LeaseWrapper" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="LeaseWrapper[Token]extendsLease[Token]"></a>
+      <a id="LeaseWrapper[Token]:LeaseWrapper[Token]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="LeaseWrapper.html"><span class="name">LeaseWrapper</span></a><span class="tparams">[<span name="Token">Token</span>]</span><span class="result"> extends <a href="Lease.html" class="extype" name="org.codeswarm.aksync.Lease">Lease</a>[<span class="extype" name="org.codeswarm.aksync.LeaseWrapper.Token">Token</span>]</span>
+      </span>
+      </h4>
+      
+    </li><li name="org.codeswarm.aksync.Lifecycle" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Lifecycle[Token]extendsLivenessCheck[Token]"></a>
+      <a id="Lifecycle[Token]:Lifecycle[Token]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Lifecycle.html"><span class="name">Lifecycle</span></a><span class="tparams">[<span name="Token">Token</span>]</span><span class="result"> extends <a href="LivenessCheck.html" class="extype" name="org.codeswarm.aksync.LivenessCheck">LivenessCheck</a>[<span class="extype" name="org.codeswarm.aksync.Lifecycle.Token">Token</span>]</span>
+      </span>
+      </h4>
+      <p class="comment cmt">A <code>Lifecycle</code> defines how tokens are born, how they die, and what happens after they die.</p>
+    </li><li name="org.codeswarm.aksync.LivenessCheck" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="LivenessCheck[Token]extendsObject"></a>
+      <a id="LivenessCheck[Token]:LivenessCheck[Token]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="LivenessCheck.html"><span class="name">LivenessCheck</span></a><span class="tparams">[<span name="Token">Token</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">Determines whether a token is alive or dead.</p>
+    </li><li name="org.codeswarm.aksync.Pool" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="Pool[A]extendsObject"></a>
+      <a id="Pool[A]:Pool[A]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Pool.html"><span class="name">Pool</span></a><span class="tparams">[<span name="A">A</span>]</span><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">An ordered collection of <code>A</code>.</p>
+    </li><li name="org.codeswarm.aksync.PoolSizeRange" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="PoolSizeRangeextendsProductwithSerializable"></a>
+      <a id="PoolSizeRange:PoolSizeRange"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="PoolSizeRange.html"><span class="name">PoolSizeRange</span></a><span class="params">(<span name="minOption">minOption: <span class="extype" name="scala.Option">Option</span>[<span class="extype" name="scala.Int">Int</span>]</span>, <span name="maxOption">maxOption: <span class="extype" name="scala.Option">Option</span>[<span class="extype" name="scala.Int">Int</span>]</span>)</span><span class="result"> extends <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="org.codeswarm.aksync.Server" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Server[Token]extendsActorwithActorLogging"></a>
+      <a id="Server[Token]:Server[Token]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="Server.html"><span class="name">Server</span></a><span class="tparams">[<span name="Token">Token</span>]</span><span class="result"> extends <span class="extype" name="akka.actor.Actor">Actor</span> with <span class="extype" name="akka.actor.ActorLogging">ActorLogging</span></span>
+      </span>
+      </h4>
+      <p class="comment cmt">A <code>Server</code> mediates access to a pool of &quot;tokens&quot;, responding to each client request by
+issuing a lease that grant temporary exclusive access to one token until the lease is
+released.</p>
+    </li><li name="org.codeswarm.aksync.StandardLease" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="StandardLease[+Token]extendsLease[Token]"></a>
+      <a id="StandardLease[+Token]:StandardLease[Token]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="StandardLease.html"><span class="name">StandardLease</span></a><span class="tparams">[<span name="Token">+Token</span>]</span><span class="result"> extends <a href="Lease.html" class="extype" name="org.codeswarm.aksync.Lease">Lease</a>[<span class="extype" name="org.codeswarm.aksync.StandardLease.Token">Token</span>]</span>
+      </span>
+      </h4>
+      <p class="comment cmt">Default lease implementation.</p>
+    </li><li name="org.codeswarm.aksync.TokenRetryInterval" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="TokenRetryIntervalextendsObject"></a>
+      <a id="TokenRetryInterval:TokenRetryInterval"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="TokenRetryInterval.html"><span class="name">TokenRetryInterval</span></a><span class="result"> extends <span class="extype" name="scala.AnyRef">AnyRef</span></span>
+      </span>
+      </h4>
+      
+    </li></ol>
+            </div>
+
+        
+
+        <div id="values" class="values members">
+              <h3>Value Members</h3>
+              <ol><li name="org.codeswarm.aksync.Lease" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Lease"></a>
+      <a id="Lease:Lease"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="Lease$.html"><span class="name">Lease</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="org.codeswarm.aksync.LeaseTimeout" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="LeaseTimeout"></a>
+      <a id="LeaseTimeout:LeaseTimeout"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="LeaseTimeout$.html"><span class="name">LeaseTimeout</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="org.codeswarm.aksync.Lifecycle" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Lifecycle"></a>
+      <a id="Lifecycle:Lifecycle"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="Lifecycle$.html"><span class="name">Lifecycle</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="org.codeswarm.aksync.Pool" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Pool"></a>
+      <a id="Pool:Pool"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="Pool$.html"><span class="name">Pool</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="org.codeswarm.aksync.PoolSizeRange" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="PoolSizeRange"></a>
+      <a id="PoolSizeRange:PoolSizeRange"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="PoolSizeRange$.html"><span class="name">PoolSizeRange</span></a><span class="result"> extends <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="org.codeswarm.aksync.TokenRetryInterval" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="TokenRetryInterval"></a>
+      <a id="TokenRetryInterval:TokenRetryInterval"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="TokenRetryInterval$.html"><span class="name">TokenRetryInterval</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="org.codeswarm.aksync.UnitLifecycle" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="UnitLifecycle"></a>
+      <a id="UnitLifecycle:UnitLifecycle"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="UnitLifecycle$.html"><span class="name">UnitLifecycle</span></a><span class="result"> extends <a href="BlockingLifecycle.html" class="extype" name="org.codeswarm.aksync.BlockingLifecycle">BlockingLifecycle</a>[<span class="extype" name="scala.Unit">Unit</span>]</span>
+      </span>
+      </h4>
+      <p class="comment cmt">The simplest possible lifecycle.</p>
+    </li></ol>
+            </div>
+
+        
+
+        
+        </div>
+
+        <div id="inheritedMembers">
+        <div class="parent" name="scala.AnyRef">
+              <h3>Inherited from <span class="extype" name="scala.AnyRef">AnyRef</span></h3>
+            </div><div class="parent" name="scala.Any">
+              <h3>Inherited from <span class="extype" name="scala.Any">Any</span></h3>
+            </div>
+        
+        </div>
+
+        <div id="groupedMembers">
+        <div class="group" name="Ungrouped">
+              <h3>Ungrouped</h3>
+              
+            </div>
+        </div>
+
+      </div>
+
+      <div id="tooltip"></div>
+
+      <div id="footer">  </div>
+
+
+    </body>
+      </html>
