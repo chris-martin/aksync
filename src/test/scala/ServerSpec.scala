@@ -101,7 +101,8 @@ class ServerSpec extends FunSpec {
 
   }
 
-  def withFixture(test: Fixture => Any)(implicit poolSizeRange: PoolSizeRange, leaseTimeout: LeaseTimeout = LeaseTimeout.Fixed(30.seconds)) {
+  def withFixture(test: Fixture => Any)(implicit poolSizeRange: PoolSizeRange,
+      leaseTimeout: LeaseTimeout = LeaseTimeout.Fixed(30.seconds)) {
 
     val fixture = new Fixture(poolSizeRange, leaseTimeout)
     import fixture.system
